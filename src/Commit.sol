@@ -3,7 +3,7 @@ pragma solidity >=0.8.25;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-contract EventStaking {
+contract Commit {
     uint256 public eventId;
 
     struct EventConfig {
@@ -17,13 +17,25 @@ contract EventStaking {
     mapping(uint256 => EventConfig) public events;
     mapping(address => mapping(uint256 => uint128)) public userStake;
 
+    event Created(uint256 indexed eventId);
+
+    event Staked(address indexed user, uint256 eventId);
+
+    event Slashed(uint256 indexed eventId, address user);
+
+    event Unstake(uint256 indexed eventId, address user);
+
     function createEvent(IERC20 token) external {
-        EventConfig storage eventConfig = events[eventId];
+        uint256 _eventId = eventId;
+
+        EventConfig storage eventConfig = events[_eventId];
         eventConfig.token = token;
         eventConfig.slashRecipient = msg.sender;
+
+        emit Created(_eventId);
     }
 
-    function attendEvent(uint256 _eventId) external payable {
+    function stake(uint256 _eventId) external payable {
         if (userStake[msg.sender][_eventId] > 0) revert();
 
         EventConfig memory eventConfig = events[_eventId];
@@ -40,6 +52,8 @@ contract EventStaking {
             bool success = eventConfig.token.transferFrom(msg.sender, address(this), eventConfig.price);
             if (!success) revert();
         }
+
+        emit Staked(msg.sender, _eventId);
     }
 
     function slashUser(address user) external {
@@ -62,11 +76,13 @@ contract EventStaking {
             bool success = eventConfig.token.transfer(eventConfig.slashRecipient, stakedAmount);
             if (!success) revert();
         }
+
+        emit Slashed(_eventId, user);
     }
 
-    function withdrawStake(uint256 _eventId) external {
+    function unstake(uint256 _eventId) external {
         EventConfig memory eventConfig = events[_eventId];
-        if (eventConfig.inactive) revert();
+        if (!eventConfig.inactive) revert();
 
         uint128 stakedAmount = userStake[msg.sender][_eventId];
 
@@ -80,5 +96,7 @@ contract EventStaking {
             bool success = eventConfig.token.transfer(eventConfig.slashRecipient, stakedAmount);
             if (!success) revert();
         }
+
+        emit Unstake(_eventId, msg.sender);
     }
 }
