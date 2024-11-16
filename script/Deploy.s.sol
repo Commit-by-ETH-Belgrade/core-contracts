@@ -7,10 +7,13 @@ import { Script } from "forge-std/src/Script.sol";
 contract Deploy is Script {
     Commit commit;
 
+    IChronicle chronicle = IChronicle(address(0));
+    ISelfKisser selfKiss = ISelfKisser(address(0));
+
     function run() external {
         vm.startBroadcast();
 
-        commit = new Commit();
+        commit = new Commit(chronicle, selfKiss);
 
         vm.stopBroadcast();
     }
